@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片评分应用</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    
+    <!-- Tailwind配置 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#10B981',
+                        neutral: '#6B7280',
+                        light: '#F3F4F6',
+                        dark: '#1F2937',
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .rating-scale {
+                @apply flex justify-between items-center w-full max-w-md mx-auto my-8;
+            }
+            .rating-option {
+                @apply w-12 h-12 rounded-full flex items-center justify-center cursor-pointer transition-all duration-300 border-2 border-gray-300 text-gray-600 hover:bg-primary/10 hover:text-primary hover:border-primary;
+            }
+            .rating-option.active {
+                @apply bg-primary text-white border-primary;
+            }
+            .btn-primary {
+                @apply bg-primary hover:bg-primary/90 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary/50 shadow-lg;
+            }
+            .btn-secondary {
+                @apply bg-secondary hover:bg-secondary/90 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-secondary/50 shadow-lg;
+            }
+            .btn-neutral {
+                @apply bg-neutral hover:bg-neutral/90 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-neutral/50 shadow-lg;
+            }
+            .progress-bar {
+                @apply h-2 bg-gray-200 rounded-full overflow-hidden;
+            }
+            .progress-value {
+                @apply h-full bg-primary rounded-full transition-all duration-500;
+            }
+            /* 连续滑块样式 */
+            .continuous-slider {
+                @apply relative w-full h-3 bg-gray-200 rounded-full cursor-pointer;
+            }
+            .slider-thumb {
+                @apply absolute top-1/2 -translate-y-1/2 w-6 h-6 bg-primary rounded-full shadow-lg cursor-pointer transition-all duration-150 border-2 border-white;
+            }
+            .slider-track {
+                @apply absolute h-full bg-primary/30 rounded-full;
+            }
+            .slider-value {
+                @apply absolute top-full mt-2 left-1/2 -translate-x-1/2 min-w-[3rem] py-1 px-2 bg-primary text-white text-sm font-medium rounded-lg text-center shadow-lg;
+            }
+            .slider-labels {
+                @apply flex justify-between w-full mt-4 text-xs text-gray-500;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-inter text-dark min-h-screen flex flex-col">
+    <!-- 导航栏 -->
+    <header class="bg-white shadow-md sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold text-primary flex items-center">
+                <i class="fa fa-picture-o mr-3"></i>图片评分应用
+            </h1>
+            <div class="flex items-center space-x-4">
+                <span id="progress-text" class="text-sm font-medium">进度: 0%</span>
+                <div class="progress-bar w-32 md:w-48">
+                    <div id="progress-bar" class="progress-value" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="flex-grow container mx-auto px-4 py-8">
+        <!-- 介绍卡片 -->
+        <div id="intro-card" class="bg-white rounded-xl shadow-lg p-8 max-w-3xl mx-auto mb-8 transition-all duration-500 transform">
+            <h2 class="text-2xl font-bold mb-4 text-dark">欢迎参加图片评分实验</h2>
+            <p class="text-gray-600 mb-6">
+                您将看到一系列图片，一部分图片会要求您根据图片让您联想到"速度"的程度进行评分，另外一部分图片会要求您根据图片让您联想到"准确"的程度进行评分。
+            </p>
+            <div class="mb-6">
+                <h3 class="font-semibold mb-2">评分说明：</h3>
+                <div class="rating-scale mb-2">
+                    <span class="text-sm">完全没有联想到</span>
+                    <span class="text-sm">中等程度联想到</span>
+                    <span class="text-sm">强烈联想到</span>
+                </div>
+                <!-- 滑块评分示例 -->
+                <div class="max-w-md mx-auto mb-8">
+                    <div class="continuous-slider">
+                        <div class="slider-track" style="width: 50%"></div>
+                        <div class="slider-thumb" style="left: 50%"></div>
+                    </div>
+                    <div class="slider-labels">
+                        <span>1</span>
+                        <span>2</span>
+                        <span>3</span>
+                        <span>4</span>
+                        <span>5</span>
+                    </div>
+                </div>
+                <p class="text-sm text-gray-500 text-center">拖动滑块或点击滑块轨道来选择您的评分</p>
+            </div>
+            <div class="flex justify-center">
+                <button id="start-btn" class="btn-primary">
+                    <i class="fa fa-play-circle mr-2"></i>开始实验
+                </button>
+            </div>
+        </div>
+
+        <!-- 图片展示卡片 -->
+        <div id="image-card" class="bg-white rounded-xl shadow-lg p-8 max-w-3xl mx-auto mb-8 hidden transition-all duration-500 transform opacity-0">
+            <div id="category-indicator" class="text-center mb-6">
+                <h2 id="category-text" class="text-xl font-bold text-primary mb-2">这张图片在多大程度上让你联想到"速度"？</h2>
+                <p id="current-image-info" class="text-sm text-gray-500">图片 1/100</p>
+            </div>
+            
+            <div class="flex justify-center mb-8">
+                <div class="relative w-full max-w-md h-48 md:h-64 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center shadow-md">
+                    <img id="stimulus-image" src="" alt="刺激图片" class="max-w-full max-h-full object-contain transition-opacity duration-500 opacity-0">
+                    <div id="loading-spinner" class="absolute flex flex-col items-center justify-center">
+                        <div class="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mb-2"></div>
+                        <span class="text-sm text-gray-500">加载图片中...</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 连续滑块评分组件 -->
+            <div class="max-w-md mx-auto mb-8">
+                <div class="continuous-slider" id="rating-slider">
+                    <div class="slider-track" id="slider-track" style="width: 0%"></div>
+                    <div class="slider-thumb" id="slider-thumb" style="left: 0%"></div>
+                    <div class="slider-value" id="slider-value">0</div>
+                </div>
+                <div class="slider-labels">
+                    <span>1</span>
+                    <span>2</span>
+                    <span>3</span>
+                    <span>4</span>
+                    <span>5</span>
+                </div>
+            </div>
+            
+            <div class="flex justify-between mt-8">
+                <button id="prev-btn" class="btn-neutral hidden">
+                    <i class="fa fa-arrow-left mr-2"></i>上一张
+                </button>
+                <button id="next-btn" class="btn-primary disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                    下一张<i class="fa fa-arrow-right ml-2"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- 结果卡片 -->
+        <div id="results-card" class="bg-white rounded-xl shadow-lg p-8 max-w-3xl mx-auto mb-8 hidden transition-all duration-500 transform opacity-0">
+            <div class="text-center mb-6">
+                <h2 class="text-2xl font-bold text-secondary mb-2">实验完成！</h2>
+                <p class="text-gray-600">感谢您参与本次图片评分实验</p>
+            </div>
+            
+            <div class="mb-8">
+                <h3 class="font-semibold mb-4">结果统计</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h4 class="font-medium mb-2">速度类别</h4>
+                        <p id="speed-avg" class="text-lg font-semibold">平均评分: 0.0</p>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h4 class="font-medium mb-2">准确度类别</h4>
+                        <p id="accuracy-avg" class="text-lg font-semibold">平均评分: 0.0</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex justify-center">
+                <button id="download-btn" class="btn-secondary">
+                    <i class="fa fa-download mr-2"></i>下载结果
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="bg-dark text-white py-6">
+        <div class="container mx-auto px-4 text-center">
+            <p>© Rom_2025 图片评分应用 | 为研究目的设计</p>
+            <p class="text-sm text-gray-400 mt-2">您的数据将仅用于研究分析，不会泄露个人信息</p>
+        </div>
+    </footer>
+
+    <script>
+        // 实验配置
+        const config = {
+            imageCount: 50, // 每类图片的数量
+            basePath: '实验刺激/', // 图片基础路径
+            sliderMin: 1, // 滑块最小值
+            sliderMax: 5, // 滑块最大值
+            sliderStep: 0.05 // 滑块步长
+        };
+
+        // 实验状态
+        const state = {
+            currentIndex: 0, // 当前图片索引
+            responses: [], // 存储用户响应
+            imagesLoaded: false, // 图片是否加载完成
+            isRatingSelected: false, // 是否已选择评分
+            selectedRating: null, // 当前选择的评分
+            isDragging: false, // 是否正在拖动滑块
+            sliderValue: 0 // 滑块当前值
+        };
+
+        // DOM元素
+        const elements = {
+            introCard: document.getElementById('intro-card'),
+            imageCard: document.getElementById('image-card'),
+            resultsCard: document.getElementById('results-card'),
+            startBtn: document.getElementById('start-btn'),
+            prevBtn: document.getElementById('prev-btn'),
+            nextBtn: document.getElementById('next-btn'),
+            downloadBtn: document.getElementById('download-btn'),
+            stimulusImage: document.getElementById('stimulus-image'),
+            loadingSpinner: document.getElementById('loading-spinner'),
+            categoryText: document.getElementById('category-text'),
+            currentImageInfo: document.getElementById('current-image-info'),
+            progressBar: document.getElementById('progress-bar'),
+            progressText: document.getElementById('progress-text'),
+            ratingSlider: document.getElementById('rating-slider'),
+            sliderTrack: document.getElementById('slider-track'),
+            sliderThumb: document.getElementById('slider-thumb'),
+            sliderValue: document.getElementById('slider-value'),
+            speedAvg: document.getElementById('speed-avg'),
+            accuracyAvg: document.getElementById('accuracy-avg')
+        };
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            // 设置按钮点击事件
+            elements.startBtn.addEventListener('click', startExperiment);
+            elements.prevBtn.addEventListener('click', showPreviousImage);
+            elements.nextBtn.addEventListener('click', showNextImage);
+            elements.downloadBtn.addEventListener('click', downloadResults);
+
+            // 设置图片加载事件
+            elements.stimulusImage.addEventListener('load', () => {
+                elements.loadingSpinner.classList.add('hidden');
+                elements.stimulusImage.classList.remove('opacity-0');
+            });
+
+            // 初始化滑块事件
+            initSliderEvents();
+
+            // 初始化响应数据
+            initializeResponses();
+        });
+
+        // 初始化滑块事件
+        function initSliderEvents() {
+            // 点击滑块轨道
+            elements.ratingSlider.addEventListener('click', (e) => {
+                const rect = elements.ratingSlider.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const width = rect.width;
+                const percent = Math.max(0, Math.min(1, x / width));
+                updateSlider(percent);
+            });
+
+            // 开始拖动
+            elements.sliderThumb.addEventListener('mousedown', () => {
+                state.isDragging = true;
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            });
+
+            // 移动端支持
+            elements.sliderThumb.addEventListener('touchstart', (e) => {
+                state.isDragging = true;
+                document.addEventListener('touchmove', onTouchMove);
+                document.addEventListener('touchend', onMouseUp);
+                e.preventDefault(); // 防止页面滚动
+            });
+
+            // 鼠标移动
+            function onMouseMove(e) {
+                if (state.isDragging) {
+                    const rect = elements.ratingSlider.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const width = rect.width;
+                    const percent = Math.max(0, Math.min(1, x / width));
+                    updateSlider(percent);
+                }
+            }
+
+            // 触摸移动
+            function onTouchMove(e) {
+                if (state.isDragging) {
+                    const rect = elements.ratingSlider.getBoundingClientRect();
+                    const touch = e.touches[0];
+                    const x = touch.clientX - rect.left;
+                    const width = rect.width;
+                    const percent = Math.max(0, Math.min(1, x / width));
+                    updateSlider(percent);
+                    e.preventDefault(); // 防止页面滚动
+                }
+            }
+
+            // 结束拖动
+            function onMouseUp() {
+                state.isDragging = false;
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+                document.removeEventListener('touchmove', onTouchMove);
+                document.removeEventListener('touchend', onMouseUp);
+            }
+        }
+
+        // 更新滑块位置和值
+        function updateSlider(percent) {
+            // 计算实际评分值 (1-5)
+            const range = config.sliderMax - config.sliderMin;
+            const rawValue = config.sliderMin + (percent * range);
+            
+            // 应用步长约束
+            const step = config.sliderStep;
+            const value = Math.round(rawValue / step) * step;
+            
+            // 计算对应的百分比位置
+            const positionPercent = ((value - config.sliderMin) / range) * 100;
+            
+            // 更新UI
+            elements.sliderTrack.style.width = `${positionPercent}%`;
+            elements.sliderThumb.style.left = `${positionPercent}%`;
+            elements.sliderValue.textContent = value.toFixed(1);
+            elements.sliderValue.style.left = `${positionPercent}%`;
+            
+            // 更新状态
+            state.sliderValue = value;
+            state.isRatingSelected = true;
+            state.selectedRating = value;
+            
+            // 启用下一步按钮
+            elements.nextBtn.disabled = false;
+            
+            // 添加选中动画效果
+            elements.sliderThumb.classList.add('scale-110');
+            setTimeout(() => {
+                elements.sliderThumb.classList.remove('scale-110');
+            }, 150);
+        }
+
+        // 初始化响应数据
+        function initializeResponses() {
+            state.responses = [];
+            for (let i = 1; i <= config.imageCount; i++) {
+                state.responses.push({
+                    category: 'speed',
+                    imageNumber: i,
+                    rating: null,
+                    timestamp: null
+                });
+                state.responses.push({
+                    category: 'accuracy',
+                    imageNumber: i,
+                    rating: null,
+                    timestamp: null
+                });
+            }
+        }
+
+        // 开始实验
+        function startExperiment() {
+            // 隐藏介绍卡片
+            elements.introCard.classList.add('opacity-0');
+            setTimeout(() => {
+                elements.introCard.classList.add('hidden');
+                
+                // 显示图片卡片
+                elements.imageCard.classList.remove('hidden');
+                setTimeout(() => {
+                    elements.imageCard.classList.remove('opacity-0');
+                }, 100);
+                
+                // 加载第一张图片
+                loadImage(state.currentIndex);
+            }, 500);
+        }
+
+        // 加载图片
+        function loadImage(index) {
+            // 重置状态
+            state.isRatingSelected = false;
+            state.selectedRating = null;
+            elements.nextBtn.disabled = true;
+            
+            // 重置滑块位置
+            resetSlider();
+            
+            // 显示加载动画
+            elements.loadingSpinner.classList.remove('hidden');
+            elements.stimulusImage.classList.add('opacity-0');
+            
+            // 更新当前图片信息
+            const totalImages = config.imageCount * 2;
+            elements.currentImageInfo.textContent = `图片 ${index + 1}/${totalImages}`;
+            
+            // 更新进度条
+            const progress = ((index + 1) / totalImages) * 100;
+            elements.progressBar.style.width = `${progress}%`;
+            elements.progressText.textContent = `进度: ${Math.round(progress)}%`;
+            
+            // 获取当前图片信息
+            const currentItem = state.responses[index];
+            const category = currentItem.category;
+            const imageNumber = currentItem.imageNumber;
+            
+            // 更新类别指示器
+            elements.categoryText.textContent = `这张图片在多大程度上让你联想到"${category === 'speed' ? '速度' : '准确'}"？`;
+            
+            // 构建图片路径
+            const imagePath = `${config.basePath}${category}/${imageNumber}.bmp`;
+            
+            // 设置图片源
+            elements.stimulusImage.src = imagePath;
+            
+            // 检查是否需要显示上一张按钮
+            elements.prevBtn.classList.toggle('hidden', index === 0);
+            
+            // 如果有已保存的评分，恢复它
+            if (currentItem.rating !== null) {
+                const range = config.sliderMax - config.sliderMin;
+                const percent = (currentItem.rating - config.sliderMin) / range;
+                updateSlider(percent);
+            }
+        }
+
+        // 重置滑块位置
+        function resetSlider() {
+            elements.sliderTrack.style.width = '0%';
+            elements.sliderThumb.style.left = '0%';
+            elements.sliderValue.textContent = '0';
+            elements.sliderValue.style.left = '0%';
+            state.sliderValue = 0;
+        }
+
+        // 保存当前评分
+        function saveCurrentRating() {
+            if (state.isRatingSelected) {
+                state.responses[state.currentIndex].rating = state.selectedRating;
+                state.responses[state.currentIndex].timestamp = new Date().toISOString();
+            }
+        }
+
+        // 显示下一张图片
+        function showNextImage() {
+            // 保存当前评分
+            saveCurrentRating();
+            
+            // 移动到下一张图片
+            state.currentIndex++;
+            
+            // 检查是否到达最后一张图片
+            if (state.currentIndex >= state.responses.length) {
+                finishExperiment();
+            } else {
+                loadImage(state.currentIndex);
+            }
+        }
+
+        // 显示上一张图片
+        function showPreviousImage() {
+            // 保存当前评分
+            saveCurrentRating();
+            
+            // 移动到上一张图片
+            if (state.currentIndex > 0) {
+                state.currentIndex--;
+                loadImage(state.currentIndex);
+            }
+        }
+
+        // 完成实验
+        function finishExperiment() {
+            // 隐藏图片卡片
+            elements.imageCard.classList.add('opacity-0');
+            setTimeout(() => {
+                elements.imageCard.classList.add('hidden');
+                
+                // 显示结果卡片
+                elements.resultsCard.classList.remove('hidden');
+                setTimeout(() => {
+                    elements.resultsCard.classList.remove('opacity-0');
+                }, 100);
+                
+                // 计算并显示统计结果
+                calculateResults();
+            }, 500);
+        }
+
+        // 计算结果统计
+        function calculateResults() {
+            const speedRatings = state.responses
+                .filter(item => item.category === 'speed' && item.rating !== null)
+                .map(item => item.rating);
+            
+            const accuracyRatings = state.responses
+                .filter(item => item.category === 'accuracy' && item.rating !== null)
+                .map(item => item.rating);
+            
+            const speedAvg = speedRatings.length > 0 
+                ? (speedRatings.reduce((sum, rating) => sum + rating, 0) / speedRatings.length).toFixed(2)
+                : '0.00';
+            
+            const accuracyAvg = accuracyRatings.length > 0 
+                ? (accuracyRatings.reduce((sum, rating) => sum + rating, 0) / accuracyRatings.length).toFixed(2)
+                : '0.00';
+            
+            elements.speedAvg.textContent = `平均评分: ${speedAvg}`;
+            elements.accuracyAvg.textContent = `平均评分: ${accuracyAvg}`;
+        }
+
+        // 下载结果
+        function downloadResults() {
+            // 准备CSV数据
+            let csvContent = "类别,图片编号,评分,时间戳\n";
+            
+            state.responses.forEach(item => {
+                csvContent += `${item.category},${item.imageNumber},${item.rating || ""},${item.timestamp || ""}\n`;
+            });
+            
+            // 创建Blob对象
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            
+            // 创建下载链接
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            
+            // 设置链接属性
+            link.setAttribute('href', url);
+            link.setAttribute('download', `image_ratings_${new Date().toISOString().slice(0,10)}.csv`);
+            
+            // 模拟点击
+            document.body.appendChild(link);
+            link.click();
+            
+            // 清理
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
